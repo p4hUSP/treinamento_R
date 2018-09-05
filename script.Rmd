@@ -1,0 +1,100 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Tópicos abordados
+
+- `httr` e `rvest`
+
+- `RSelenium`
+
+### WebScraping por meio de requisições
+
+```{r}
+library(tidyverse)
+library(httr)
+```
+
+```{r}
+# Definindo o html
+u0 <- "https://www.estantevirtual.com.br/busca"
+# Definindo a query de acordo com o parametro desejado
+query <- list(q = "O Pequeno Príncipe")
+# Fazendo a requisição para o site
+request <- httr::GET(u0, query = query)
+
+request
+
+# O site organiza automaticamente os livros por relevancia, sendo assim vamos pegar o primeiro link
+node0 <- request %>% 
+  httr::content(as = "parsed") # O argumento parsed é importante para já obtermos o html parseado
+
+# buscando o nó de interesse, neste caso é o link
+link_suf <- node0 %>% 
+  rvest::html_nodes(xpath = '//a[@class="busca-box m-group ga_tracking_event desktop"]') %>% 
+  rvest::html_attr("href") %>% 
+  dplyr::first()
+
+# O link obtido não esta completo ele tem apenas a segunda parte do link. Vamos montá-lo
+link <- stringr::str_c("https://www.estantevirtual.com.br", link_suf)
+link
+
+# Agora podemos ler o html com rvest mesmo
+node <- xml2::read_html(link)
+# Caso a gente queira salvar o html para utilizar depois (pense em uma situação que nós não temos internet)
+node %>% xml2::write_html("web_scraping/data_raw/estante_virtual.html")
+# O html fica todo feio, mas a forma de tirar as informações dele é a mesma.
+
+# Agora vamos começar a pegar as informações de interesse para estrutura-las em tabelas. Esse processo é chamado de parser e o que basicamente estamos fazendo é parsear um arquivo HTML
+## Vamos começar a obter o titulo do livro
+titulos <- node %>% 
+  rvest::html_nodes(xpath = '//h2[@class="busca-title js-toggle-title"]') %>% 
+  rvest::html_text(trim = T) # o parametro trim é apenas para evitar que a string venha algo como "   Pequeno Príncipe  "
+
+# O Ano é uma informação interessante também
+## Percebam como esse site é legal! Quando não tem a informação eles colocam um "-". Se não tivessemos isso, teriamos problemas
+ano <- node %>% 
+  rvest::html_nodes(xpath = '//span[@itemprop="datePublished"]') %>% 
+  rvest::html_text(trim = T)
+
+### Vamos aproveitar e limpar esse vetor com um if e um for
+#### Para cada observação de ano dentro do vetor ano, verificar se cada elemento é igual a "-". Em caso positivo, substituir "-" por NA; caso contrario, manter como está
+for(cada_ano in 1:length(ano)){
+  if(ano[cada_ano] == "-"){
+    ano[cada_ano] <- NA_character_
+  } else {
+    ano[cada_ano] <- ano[cada_ano]
+  }
+}
+### Vamos ver o resultado
+ano
+
+## Outra coisa legal para pegar é a editora
+editora <- node %>% 
+  rvest::html_nodes(xpath = '//span[@itemprop="publisher"]') %>%
+  rvest::html_text(trim = T)
+
+## tipo do livro
+tipo <- node %>%
+  rvest::html_nodes(xpath = '//p[@class="busca-type type m-used"]') %>% 
+  rvest::html_text(trim = T)
+
+### Percebam que é muito chato o "Tipo:" na frente da real informação; vamos remove-lo
+tipo <- tipo %>% stringr::str_replace_all("Tipo:", "") %>% 
+  stringr::str_trim()
+
+## preço
+preco <- node %>% 
+  rvest::html_nodes(xpath = '//strong[@class="busca-price"]') %>% 
+  rvest::html_text(trim = T) %>% 
+  stringr::str_replace_all("R\\$\\n", "") %>% # vamos substituir o que nao queremos
+  stringr::str_replace_all("\\,", "\\.") %>% # o R entende que numero é separado por pont
+  stringr::str_trim() %>% 
+  as.numeric()
+
+## frete
+node %>% 
+  rvest::html_nodes(xpath = '//div[@class="breslt-buttons-price-wrapper"]//span[@class="busca-label"]/text()') %>% rvest::html_text()
+```
+
