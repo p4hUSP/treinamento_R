@@ -97,4 +97,5 @@ preco <- node %>%
 node %>% 
   rvest::html_nodes(xpath = '//div[@class="breslt-buttons-price-wrapper"]//span[@class="busca-label"]/text()') %>% rvest::html_text()
 ```
+ 
 
