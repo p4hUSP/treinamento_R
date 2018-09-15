@@ -97,4 +97,138 @@ preco <- node %>%
 estante_virtual <- dplyr::tibble(ano = ano, preco = preco, titulo = titulos, tipo = tipo)
 ```
  
+# Como percorrer as outras páginas?
+
+Nós vimos como organizar os dados de uma página do estante virtual, porém precisamos percorrer as páginas restantes. Lembra-se que no código, nós geramos uma url e chamamos ela de `link`? Cole ela no seu browser! Ela abrir a página que vamos fazer a coleta, correto? Se descermos até o final da página podemos notar que existem outras, cliquem para ir para próxima página. 
+
+Se vocês perceberem, o conteúdo do link mudou agora ele tem um final "&offset=2". Isto é um parâmetro da requisição GET, a mesma que fizemos no começo deste tutorial. Se mudarmos o "2" para "3" e assim por diante iremos mudar de página.
+
+Lembre-se, no WebScraping, começamos com pequenos exemplos para depois generalizar e assim ter um código eficiente para qualquer tipo de coleta dentro do site.
+
+Este é o seu link
+
+```{r}
+link
+```
+
+Existem diversas formas de acessarmos as próximas páginas, vou ensinar o jeito mais facil para entender as requisições no site. Lembra que tinhamos falado de um paremetro no nosso link quando mudamos de página, iremos adicionar esse paramêtro programaticamente utilizando o pacote `httr`
+
+```{r}
+library(httr) # provavelmente voce já habilitou ele no começo deste tutorial, mas por via das duvidas vamos fazer de novo
+
+# Vamos montar a nossa query, ou seja, falar qual parametro queremos utilizar
+# Para isso criaremos uma lista e a chamaremos de query
+query <- list(offset = "2")
+
+# Antes de continuarmos, vamos entender melhor o que são as listas. Não sou muito bom com exemplos, mas acho que este ajuda
+# Imagina que uma lista é um guarda roupa e cada elemento da lista é uma gaveta ou armário. Ou seja, você tem a gaveta das meias,
+# calças, camisetas e assim por diante. Cada um desses elementos são diferentes uns dos outros. Logo uma lista pode ser considerada 
+# um objeto heterogeneo, pois ele pode receber elementos com tipos diferentes. Os elementos das listas também podem ser nomeados, o que
+# significa, por exemplo, que a sua gaveta de meias pode se chamar MEIA, para fazer isso no R fazemos o seguinte
+armario <- list(MEIA = c("Branca", "Preta", "Cinza"),
+                CAMISETA = c("Weezer", "The Beatles", "RATM"),
+                CALÇA = c("Skinny", "Boca de sino", "Flare"))
+
+# Basicamente é isso que fazemos no nosso objeto chamado query, o parametro (offset) é o nome da lista e o valor do parametro, é o conteudo depois do =. Ficou facil de entender?
+
+# Ok, vamos então fazer a requisição que que queremos
+request <- GET(link, query = query)
+request
+
+# Veja que o status deu 200, o que é sucesso. Mas agora vem a pergunta dificil: Como saber quantas páginas navegar? 
+# Como não quero confundir mais a cabeça de vocês, eu fiquei navegando até a ultima pagina e vi que ela acaba na página 74.
+# Para fazemos isso teremos que fazer um loop utilizando o for.
+# Se você tem dúvidas sobre o que é um for acessa esse link: https://www.datacamp.com/community/tutorials/tutorial-on-loops-in-r
+# Mas basicamente, para cada requisição que fizermos vamos mudar o valor do parametro para "3", "4", "5" até chegar no "74".
+
+# Antes de continuarmos, tem uma coisa legal de se fazer no web scraping, que é salvar as páginas que nós acessamos,pois 
+# assim facilitamos a nossa vida para pegar as informações depois
+# Neste tutorial, nós vimos a função "write_html", veremos uma outra função que se chama "write_disk", ela faz a mesma coisa
+# que a anterior, porém nós podemos usá-la dentro da nossa função GET. Vamo ver o exemplo:
+GET(link, query = query, write_disk("pagina2.html"))
+
+# Se você olhar pasta que você esta trabalhando, verá que um arquivo chamado pagina2.html foi gerado. A nossa
+# estrategia vai ser baixar o conteudo de todas as paginas utilizando um for. 
+# Como esse assunto pode ser muito dificil por agora (me cobrem se sentirem duvidas. É serio, me cobrem mesmo!)
+# irei apenas colocar o código e alguns comentarios
+
+dir.create("download_estantevirtual") # Criei uma pasta para jogar os arquivos lá dentro (Executa isso só uma vez, pelo amor kk)
+for(i in 1:74){
+  query <- list(offset = as.character(i)) # cada valor de i vai assumir 1, 2, 3, 4 .. 74; Estamos transformando ele em uma variavel texto para entrar no parametro corretament
+  GET(link, query = query, write_disk(stringr::str_c("download_estantevirtual/pagina", as.character(i), ".html"))) # O nosso link é "https://www.estantevirtual.com.br/livros/antoine-de-saint-exupery/o-pequeno-principe/3131401159?q=O+Pequeno+Príncipe", espero que você tenha um igual ou semelhante a este kk; Não preocupem agora com o que estão vendo dentro do write_disk, aprofundaremos em outros tutoriais
+}
+# Demorou né, ufa! kk
+
+# Ok, baixamos tudo, mas como podemos executar todos os codigos em cada uma das paginas baixadas? Fazemos funções
+# Para criar uma função precisamos dar um nome para ela, no nosso caso, como vamos organizar os dados (parsear),vou
+# chamar de parser_estante. Dentro do function() vão os parametros da nossa função, que no caso é uma pagina baixada.
+# Ai dentro dela vão todas as operações que fizemos lá em cima, desde ler o html, até fazer uma tabela. Basicamente copiamos e colocamos
+# mudando coisas bem pontuais que eu comento caso necessario
+parser_estante <- function(pagina_baixada){ # COm o cursos do mouse aqui vc executa a função para ele ficar disponivel para voce
+  node <- xml2::read_html(pagina_baixada) # aqui iremos ler o nosso html baixado
+  
+  titulos <- node %>% 
+    rvest::html_nodes(xpath = '//h2[@class="busca-title js-toggle-title"]') %>% 
+    rvest::html_text(trim = T) 
+  
+  ano <- node %>% 
+    rvest::html_nodes(xpath = '//span[@itemprop="datePublished"]') %>% 
+    rvest::html_text(trim = T)
+  
+  for(cada_ano in 1:length(ano)){
+    if(ano[cada_ano] == "-"){
+      ano[cada_ano] <- NA_character_
+      } else {
+        ano[cada_ano] <- ano[cada_ano]
+    }
+  }
+  
+  editora <- node %>%
+    rvest::html_nodes(xpath = '//span[@itemprop="publisher"]') %>%
+    rvest::html_text(trim = T)
+  
+  tipo <- node %>%
+    rvest::html_nodes(xpath = '//p[@class="busca-type type m-used"]|//p[@class="busca-type type m-new"]') %>% 
+    rvest::html_text(trim = T)
+
+  tipo <- tipo %>%
+    stringr::str_replace_all("Tipo:", "") %>% 
+    stringr::str_trim()
+
+  preco <- node %>%
+    rvest::html_nodes(xpath = '//strong[@class="busca-price"]') %>% 
+    rvest::html_text(trim = T) %>% 
+    stringr::str_replace_all("R\\$\\n", "") %>%
+    stringr::str_replace_all("\\,", "\\.") %>% 
+    stringr::str_trim() %>% 
+    as.numeric()
+
+  estante_virtual <- dplyr::tibble(ano = ano, preco = preco, titulo = titulos, tipo = tipo)
+  
+  return(estante_virtual) # É muito importante colocar essa função return, pois estamos sinalizando o que nossa função retorna, que no caso é um data frame
+}
+
+# Vamos tentar a nossa função com as paginas baixadas?
+# Para isso temos que acessa-las utilizando as seguinte funcao
+arquivos_html <- dir("download_estantevirtual/", full.names = T)
+
+parser_estante(arquivos_html[1])
+
+# Esta função não consegue pegar todos os arquivos de uma vez, o que significa que ela nao é vetorizada, como por exemplo,
+# se fizer:
+parser_estante(arquivos_html)
+
+# Vai dar um erro
+
+# Mas não se preocupe, vamos utilizar mais um for para solucionar tudo isso
+
+dados <- list() # eu criei uma lista vazia que vai receber os resultados da função. Imagina que 
+# compramos um armario novo e vamos colocar as roupas dentro
+for(i in 1:74){
+  dados[[i]] <- parser_estante(arquivos_html[i])
+}
+
+# Depois disso, precisamos apenas empilhar os dados e tchanan!!
+bind_rows(dados)
+```
 
