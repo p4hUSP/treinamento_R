@@ -43,7 +43,7 @@ link
 # Agora podemos ler o html com rvest mesmo
 node <- xml2::read_html(link)
 # Caso a gente queira salvar o html para utilizar depois (pense em uma situação que nós não temos internet)
-node %>% xml2::write_html("web_scraping/data_raw/estante_virtual.html")
+node %>% xml2::write_html("estante_virtual.html")
 # O html fica todo feio, mas a forma de tirar as informações dele é a mesma.
 
 # Agora vamos começar a pegar as informações de interesse para estrutura-las em tabelas. Esse processo é chamado de parser e o que basicamente estamos fazendo é parsear um arquivo HTML
@@ -77,7 +77,7 @@ editora <- node %>%
 
 ## tipo do livro
 tipo <- node %>%
-  rvest::html_nodes(xpath = '//p[@class="busca-type type m-used"]') %>% 
+  rvest::html_nodes(xpath = '//p[@class="busca-type type m-used"]|//p[@class="busca-type type m-new"]') %>% 
   rvest::html_text(trim = T)
 
 ### Percebam que é muito chato o "Tipo:" na frente da real informação; vamos remove-lo
@@ -93,9 +93,8 @@ preco <- node %>%
   stringr::str_trim() %>% 
   as.numeric()
 
-## frete
-node %>% 
-  rvest::html_nodes(xpath = '//div[@class="breslt-buttons-price-wrapper"]//span[@class="busca-label"]/text()') %>% rvest::html_text()
+# Depois é só juntar as informações
+estante_virtual <- dplyr::tibble(ano = ano, preco = preco, titulo = titulos, tipo = tipo)
 ```
  
 
