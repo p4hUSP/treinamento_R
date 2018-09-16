@@ -1,0 +1,100 @@
+---
+title: "Treinamento - Text Mining"
+output: html_notebook
+---
+
+# O que é uma "string"
+
+A quantidade de informações geradas atualmente são incríveis e consequentemente a forma como eles estão estruturados pode variar muito, entre elas, o casos dos __textos__.
+
+Análise de texto não é algo relativamente novo, podemos notar isso em papers e livros sobre análise de discurso ou conteúdo. Ocorre que o poder computacional foi capaz de trazer análises ainda mais escaláveis do que se fazia antes e com uma força quantitativa muito mais robusta.
+
+No R existem muitos pacotes para lidar com textos, que vão desde contar frequência de palavras até rodar modelos estatísticos. Neste treinamento começaremos utilizando o `stringr`, pacote desenvolvido por Hadley Wickham. Vamos ver como ele funciona:
+
+```{r}
+library(stringr)
+```
+
+ Os objetos de texto (Strings) são construídos com aspas simples `''` ou duplas `""`, logo o vetor abaixo é um vetor de strings
+ 
+```{r}
+c("treinemento", "p4h", "usp")
+```
+ 
+ E como sabeos disso?
+ 
+```{r}
+class(c("treinemento", "p4h", "usp"))
+```
+ 
+ Vamos começar utilizando o `stringr`!
+ 
+A maior parte das funções do `stringr` tem como prefixo `str_`, como por exemplo, `str_replace()`, `str_detect()` ou `str_extract()`. Os nossos exemplos serão dados utilizando o seguinte vetor:
+
+```{r}
+exemplo <- c("SPSS é melhor que R", "Só SPSS salva", "Programar é legal", "Programacao com R" ,"É VeRdAdE eSsE BiLhEtE")
+exemplo
+```
+
+### str_lenght() 
+
+O `str_lenght()` serve para verificarmos o número de caracteres das palavras. Note que ele é diferente da função `length()` que apenas conta a quantidade de elementos no vetor.
+
+```{r}
+str_length(exemplo)
+```
+
+```{r}
+length(exemplo)
+```
+
+### str_c()
+
+O `str_c()` nos ajuda a concatenar as strings em uma única. Vamos ver um exemplo concatenando os elementos das posições um e dois do nosso vetor.
+
+```{r}
+str_c(exemplo[1], exemplo[5], sep = " ")
+```
+
+### str_to_lower(), str_to_title(), str_to_upper()
+
+Estas funções são bem intuitivas, olha só:
+
+```{r}
+str_to_lower(exemplo)
+```
+
+```{r}
+str_to_title(exemplo)
+```
+
+```{r}
+str_to_upper(exemplo)
+```
+
+### str_replace() e str_replace_all()
+
+A função `str_replace()` e `str_replace_all()` localizam um padrão e o substituem por algo de seu interesse, por exemplo, queremos substituir todas as palavras SPSS para R.
+
+```{r}
+str_replace(exemplo, pattern = "SPSS", "R")
+```
+
+### str_detect()
+
+O `str_detect()` irá detectar se existe um padrão específico nos seus textos, como por exemplo, vamos detectar em quais elementos aparecem a palavra "Progra"".
+
+```{r}
+str_detect(exemplo, "Progra") # atente-se para o P maiusculo
+```
+
+### str_extract()
+
+O `str_extract()` extraí um padrão dos elementos do texto.
+
+```{r}
+str_extract(exemplo, "Progra")
+```
+
+# Text Mining dos Feedbacks do primeiro workshop
+
